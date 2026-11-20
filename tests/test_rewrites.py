@@ -25,7 +25,7 @@ def test_genemeal_rewrites_unchanged():
     rw = suggest_ctr_rewrite(page, "https://genemeal.onrender.com")
     assert rw is not None
     assert rw["suggested_title"] == "GeneMeal: Weekly Nutrigenomic Meal Plans ($34.97/mo)"
-    assert "$34.97/mo" in rw["suggested_meta"]
+    assert "$34.97/month" in rw["suggested_meta"]
     # Same helper used by the original path
     assert _suggest_ctr_rewrite_genemeal(page)["suggested_title"] == rw["suggested_title"]
 
