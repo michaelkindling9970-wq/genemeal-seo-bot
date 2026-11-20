@@ -60,7 +60,10 @@ def _classify_keyword(kw: str, seed: str) -> Dict[str, Any]:
         angle = "Educational nutrigenomics guide linking to GeneMeal weekly meal planner"
     else:
         intent = "Solution-Aware"
-        angle = "How existing DNA files power real-time weekly meal plans (no test kit needed)"
+        angle = (
+            "Real-time meal-planning subscription with weekly nutrigenomic updates "
+            "($34.97/month; not a DNA test or medical advice)"
+        )
 
     return {
         "keyword": kw,

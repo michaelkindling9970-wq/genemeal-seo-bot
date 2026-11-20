@@ -108,6 +108,39 @@ def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None
         )
         rationale = "Adds clear support intent and concise 145-char meta description for branded support searches."
         impact = "Low"
+    elif path == "/privacy":
+        sug_title = "Privacy Policy | How GeneMeal Handles Your Data"
+        sug_meta = (
+            "How GeneMeal collects, encrypts, uses, and deletes uploaded data, marker notes, "
+            "and billing records. Not a DNA test or medical advice."
+        )
+        rationale = (
+            "Expands a short legal title and description to a complete SERP snippet without "
+            "a promotional hook, while keeping honest non-medical, not-a-DNA-test wording."
+        )
+        impact = "Low"
+    elif path == "/terms":
+        sug_title = "Terms of Service | GeneMeal Meal Plan Subscription"
+        sug_meta = (
+            "Terms for using GeneMeal, a $34.97/month meal-planning subscription with weekly "
+            "nutrigenomic updates. Cancel anytime. Not a DNA test or medical advice."
+        )
+        rationale = (
+            "Brings a short terms title and description into the typical SERP length range "
+            "with accurate subscription wording and the medical/DNA-test disclaimer."
+        )
+        impact = "Low"
+    elif path == "/unsubscribe":
+        sug_title = "Unsubscribe or Cancel | GeneMeal Subscription Help"
+        sug_meta = (
+            "Cancel or manage your GeneMeal $34.97/month meal-planning subscription via the "
+            "card billing portal or PayPal. Not a DNA test or medical advice."
+        )
+        rationale = (
+            "Replaces the inherited homepage description (DNA-test framing, 194 characters) "
+            "and a short title with page-specific cancellation wording."
+        )
+        impact = "Medium"
     else:
         return None
 
@@ -282,10 +315,55 @@ def suggest_ctr_rewrite(page: Dict[str, Any], target_url: str = "") -> Optional[
     return _suggest_ctr_rewrite_generic(page)
 
 
+
+def _is_legal_or_account_path(path: str) -> bool:
+    pth = (path or "/").rstrip("/") or "/"
+    return pth in {"/privacy", "/terms", "/unsubscribe"} or pth.startswith("/account")
+
+
+def _title_length_recommendation(path: str, is_genemeal: bool) -> str:
+    if _is_legal_or_account_path(path):
+        return (
+            "Expand or tighten the <title> to about 45–60 characters with accurate, "
+            "page-specific wording (no promotional hook required on legal or account pages)."
+        )
+    if is_genemeal:
+        return "Tighten or expand the <title> to 45–60 characters with primary keyword + value hook."
+    return (
+        "Tighten or expand the <title> to 45–60 characters using wording already present on the page."
+    )
+
+
+def _meta_length_recommendation(path: str, is_genemeal: bool) -> str:
+    if _is_legal_or_account_path(path):
+        return (
+            "Rewrite the meta description to 135–158 characters with accurate page-specific wording "
+            "(no promotional subscription hook required on legal or account pages)."
+        )
+    if is_genemeal:
+        return (
+            "Rewrite the meta description to 135–158 characters with a clear $34.97/month "
+            "meal-planning subscription hook, and keep 'not a DNA test or medical advice' where it fits."
+        )
+    return (
+        "Rewrite the meta description to 135–158 characters, using only claims already present on the page."
+    )
+
+
+def _missing_meta_recommendation(is_genemeal: bool) -> str:
+    if is_genemeal:
+        return (
+            "Add a persuasive 140–158 character meta description highlighting the $34.97/month "
+            "weekly nutrigenomic meal-planning subscription (not a DNA test or medical advice)."
+        )
+    return "Add a unique 140–158 character meta description that accurately summarizes this page."
+
+
 def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
     robots_found = crawl_data["robots_found"]
     sitemap_found = crawl_data["sitemap_found"]
     status_cache = crawl_data["status_cache"]
+    is_genemeal = is_genemeal_target(str(crawl_data.get("target_url") or ""))
 
     audited_pages: List[Dict[str, Any]] = []
     all_issues: List[Dict[str, Any]] = []
@@ -388,7 +466,7 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
                         "CTR & Snippets",
                         f"Title length outside ideal SERP range ({title_len} chars) on {path}",
                         f"Current title \"{title}\" is {title_len} characters (ideal 30–62 chars to avoid truncation).",
-                        "Tighten or expand the <title> to 45–60 characters with primary keyword + value hook.",
+                        _title_length_recommendation(path, is_genemeal),
                     )
                 if title in seen_titles:
                     add_issue(
@@ -420,7 +498,7 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
                         "CTR & Snippets",
                         f"Meta description length suboptimal ({meta_desc_len} chars) on {path}",
                         f"Current description is {meta_desc_len} chars; Google typically displays ~140–160 chars.",
-                        "Rewrite meta description to 135–158 chars with a clear $34.97/mo subscription hook.",
+                        _meta_length_recommendation(path, is_genemeal),
                     )
                 if meta_desc in seen_metas:
                     add_issue(
@@ -438,7 +516,7 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
                     "CTR & Snippets",
                     f"Missing meta description on {path}",
                     "No <meta name='description'> found; search engines will auto-generate a snippet.",
-                    "Add a persuasive 140–158 character meta description highlighting weekly nutrigenomic meal plans.",
+                    _missing_meta_recommendation(is_genemeal),
                 )
 
             social_pts = 0.0
@@ -451,6 +529,14 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
             if twitter_card:
                 social_pts += 1.5
             ctr_score += social_pts
+            if og_title and title and og_title != title:
+                add_issue(
+                    "medium",
+                    "CTR & Snippets",
+                    f"og:title does not match <title> on {path}",
+                    f'og:title is "{og_title}" but the document title is "{title}".',
+                    "Set og:title to match the document title so social shares use the same wording.",
+                )
             if social_pts < 6.0:
                 missing_og = [
                     name
@@ -587,7 +673,11 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
                 "Structured Data",
                 f"No JSON-LD structured data on {path}",
                 "Missing application/ld+json schema limits rich result eligibility (pricing, FAQ, breadcrumbs).",
-                "Add Schema.org JSON-LD (WebSite, SoftwareApplication/Offer at $34.97/mo, or FAQPage).",
+                (
+                    "Add Schema.org JSON-LD (WebSite, SoftwareApplication/Offer at $34.97/month, or FAQPage)."
+                    if is_genemeal
+                    else "Add Schema.org JSON-LD such as WebSite, Organization, Article, or FAQPage where it accurately describes the page."
+                ),
             )
 
         # Scoring: Performance & Accessibility (10)
