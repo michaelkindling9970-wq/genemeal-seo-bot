@@ -481,7 +481,8 @@ function renderDashboard(snap) {
     $("kpi-sev-pills").innerHTML = `
       <span class="mini-badge crit">${sev.critical || 0}C</span>
       <span class="mini-badge warn">${sev.high || 0}H</span>
-      <span class="mini-badge">${sev.medium || 0}M</span>`;
+      <span class="mini-badge">${sev.medium || 0}M</span>
+      <span class="mini-badge">${sev.low || 0}L</span>`;
 
     animateNumber($("kpi-ms"), run.avg_response_ms || 0, 0);
     $("last-run-label").textContent = `Last run: ${formatLocalTime(run.finished_at || run.started_at)}`;

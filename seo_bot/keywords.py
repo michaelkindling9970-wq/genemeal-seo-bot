@@ -18,7 +18,7 @@ SEEDS = [
     "nutrigenomic meal plan",
 ]
 
-NOISE_TOKENS = ("cats", "dog", "joke", "egypt", "philippines", "india", "uk", "canada", "jobs", "salary", "course", "degree", "pdf free")
+NOISE_TOKENS = ("cats", "dog", "joke", "egypt", "philippines", "india", "uk", "canada", "australia", "bangalore", "hyderabad", "singapore", "dubai", "pronunciation", "jobs", "salary", "course", "degree", "pdf free", "creatine", "protein powder")
 
 HIGH_VALUE_TOKENS = {
     "dna": 18,
