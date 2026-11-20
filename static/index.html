@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeneMeal SEO Bot — Live Organic Growth &amp; Audit Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <canvas id="sparkle-canvas" aria-hidden="true"></canvas>
+  <div class="aurora aurora-1" aria-hidden="true"></div>
+  <div class="aurora aurora-2" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <!-- Top Command Bar -->
+    <header class="topbar glass-card">
+      <div class="brand-cluster">
+        <div class="bot-avatar" aria-hidden="true">
+          <div class="bot-ring"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2L14.8 8.2L21 9.2L16.5 13.6L17.6 20L12 16.9L6.4 20L7.5 13.6L3 9.2L9.2 8.2L12 2Z" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1>GeneMeal SEO Bot</h1>
+            <span id="status-pill" class="status-pill status-idle">
+              <span class="pulse-dot"></span>
+              <span id="status-text">LIVE · IDLE</span>
+            </span>
+          </div>
+          <p class="brand-sub">
+            Target: <a href="https://genemeal.onrender.com" target="_blank" rel="noopener">genemeal.onrender.com</a>
+            <span class="sep">•</span>
+            <span class="pos-tag">$34.97/mo Weekly Nutrigenomic Meal Plans · Not a DNA Test · Not Medical Advice</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="controls-cluster">
+        <button id="token-btn" class="btn btn-ghost" type="button" title="Control Token">
+          <span id="token-icon">🔒</span>
+          <span id="token-label">Controls Locked</span>
+        </button>
+        <button id="keywords-btn" class="btn btn-secondary" type="button">
+          <span class="btn-ico">✦</span> Discover Keywords
+        </button>
+        <button id="run-btn" class="btn btn-primary" type="button">
+          <span class="btn-ico">▶</span> Run Audit Now
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Strip -->
+    <section class="kpi-grid" aria-label="Measured Audit Metrics">
+      <article class="kpi-card glass-card">
+        <div class="kpi-label">Measured SEO Score</div>
+        <div class="kpi-value-row">
+          <span id="kpi-score" class="kpi-val gradient-text">--</span>
+          <span class="kpi-unit">/ 100</span>
+        </div>
+        <div id="kpi-score-sub" class="kpi-sub">Waiting for audit run...</div>
+      </article>
+
+      <article class="kpi-card glass-card">
+        <div class="kpi-label">Pages Audited (robots-safe)</div>
+        <div class="kpi-value-row">
+          <span id="kpi-pages" class="kpi-val">0</span>
+          <span id="kpi-robots-badges" class="mini-badges"></span>
+        </div>
+        <div id="kpi-pages-sub" class="kpi-sub">Live crawl telemetry</div>
+      </article>
+
+      <article class="kpi-card glass-card">
+        <div class="kpi-label">Prioritized Findings</div>
+        <div class="kpi-value-row">
+          <span id="kpi-issues" class="kpi-val">0</span>
+          <span id="kpi-sev-pills" class="mini-badges"></span>
+        </div>
+        <div id="kpi-issues-sub" class="kpi-sub">Sorted by organic CTR impact</div>
+      </article>
+
+      <article class="kpi-card glass-card">
+        <div class="kpi-label">Avg Latency &amp; Draft Queue</div>
+        <div class="kpi-value-row">
+          <span id="kpi-ms" class="kpi-val">--</span>
+          <span class="kpi-unit">ms</span>
+        </div>
+        <div id="kpi-drafts-sub" class="kpi-sub">0 pending drafts (never auto-published)</div>
+      </article>
+    </section>
+
+    <!-- Hero Row: Score Gauge + Live Terminal Stream -->
+    <section class="hero-grid">
+      <article class="gauge-panel glass-card">
+        <div class="panel-head">
+          <div>
+            <h2>Organic Readiness Gauge</h2>
+            <p class="panel-sub">Deterministic score from real HTML, headers &amp; crawl checks</p>
+          </div>
+          <span id="grade-badge" class="grade-badge">--</span>
+        </div>
+
+        <div class="gauge-wrap">
+          <svg class="score-svg" viewBox="0 0 220 220" aria-label="SEO Score Gauge">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#10b981" />
+                <stop offset="50%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+              <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+            <circle class="gauge-track" cx="110" cy="110" r="88" />
+            <circle id="gauge-arc" class="gauge-arc" cx="110" cy="110" r="88" filter="url(#glowFilter)" />
+          </svg>
+          <div class="gauge-center">
+            <div id="gauge-number" class="gauge-number">--</div>
+            <div class="gauge-caption">OVERALL SCORE</div>
+          </div>
+        </div>
+
+        <div id="pillar-bars" class="pillar-bars"></div>
+      </article>
+
+      <article class="terminal-panel glass-card">
+        <div class="panel-head">
+          <div class="term-title-wrap">
+            <div class="term-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <h2>Live Bot Activity Stream</h2>
+          </div>
+          <span id="sse-badge" class="sse-badge">CONNECTING SSE...</span>
+        </div>
+        <div id="terminal-log" class="terminal-log" role="log" aria-live="polite"></div>
+        <div class="terminal-footer">
+          <span id="last-run-label">Last run: --</span>
+          <span id="schedule-label">Auto-audit every 6h while awake</span>
+        </div>
+      </article>
+    </section>
+
+    <!-- Charts Row -->
+    <section class="charts-grid">
+      <article class="glass-card chart-card">
+        <div class="panel-head">
+          <div>
+            <h2>Page Score &amp; Response Time</h2>
+            <p class="panel-sub">Measured per-URL audit score (0–100) vs server TTFB (ms)</p>
+          </div>
+        </div>
+        <div class="chart-box">
+          <canvas id="pagesChart"></canvas>
+        </div>
+      </article>
+
+      <article class="glass-card chart-card">
+        <div class="panel-head">
+          <div>
+            <h2>Issues by Severity</h2>
+            <p class="panel-sub">Distribution of real findings across crawled routes</p>
+          </div>
+        </div>
+        <div class="chart-box chart-box-sm">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </article>
+
+      <article class="glass-card chart-card">
+        <div class="panel-head">
+          <div>
+            <h2>SEO Pillar Balance</h2>
+            <p class="panel-sub">Measured % across 5 audit dimensions</p>
+          </div>
+        </div>
+        <div class="chart-box chart-box-sm">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <!-- Honest Google Search Console Placeholder -->
+    <section class="gsc-banner glass-card">
+      <div class="gsc-left">
+        <div class="gsc-icon">GSC</div>
+        <div>
+          <h3>Connect Google Search Console for Real CTR &amp; Ranking Data</h3>
+          <p>
+            Google Search Console is not connected yet. To keep this dashboard 100% honest, <strong>zero fabricated impressions, clicks, or keyword rankings</strong> are shown. Connect GSC OAuth to unlock live query CTR curves alongside these on-page audits.
+          </p>
+        </div>
+      </div>
+      <div class="gsc-status-pill">Not Connected · Honest Telemetry Mode</div>
+    </section>
+
+    <!-- CTR Title & Meta Rewrite Studio -->
+    <section class="glass-card section-block">
+      <div class="panel-head">
+        <div>
+          <h2>CTR Snippet &amp; Meta Rewrite Studio</h2>
+          <p class="panel-sub">Real SERP snippets measured on genemeal.onrender.com vs CTR-optimized proposals ($34.97/mo positioning)</p>
+        </div>
+        <span id="rewrites-count" class="count-pill">0 proposals</span>
+      </div>
+      <div id="rewrites-grid" class="rewrites-grid"></div>
+    </section>
+
+    <!-- Prioritized Issues & Audited Pages -->
+    <section class="two-col-grid">
+      <article class="glass-card section-block">
+        <div class="panel-head">
+          <div>
+            <h2>Prioritized Fix Recommendations</h2>
+            <p class="panel-sub">Actionable on-page &amp; technical fixes ranked by severity</p>
+          </div>
+          <div class="filter-pills" id="issue-filters">
+            <button class="chip active" data-sev="all">All</button>
+            <button class="chip" data-sev="critical">Critical</button>
+            <button class="chip" data-sev="high">High</button>
+            <button class="chip" data-sev="medium">Medium</button>
+            <button class="chip" data-sev="low">Low</button>
+          </div>
+        </div>
+        <div id="issues-list" class="issues-list"></div>
+      </article>
+
+      <article class="glass-card section-block">
+        <div class="panel-head">
+          <div>
+            <h2>Crawled Pages Matrix</h2>
+            <p class="panel-sub">Live measurements per route (robots.txt respected)</p>
+          </div>
+          <span id="pages-count" class="count-pill">0 pages</span>
+        </div>
+        <div class="table-scroll">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Path</th>
+                <th>Score</th>
+                <th>HTTP</th>
+                <th>ms</th>
+                <th>Title / Meta</th>
+                <th>H1</th>
+                <th>Schema</th>
+              </tr>
+            </thead>
+            <tbody id="pages-tbody"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- Keyword Opportunity Cloud -->
+    <section class="glass-card section-block">
+      <div class="panel-head">
+        <div>
+          <h2>Keyword Opportunity Cloud</h2>
+          <p class="panel-sub">Live suggestions from Google Autocomplete &amp; on-page positioning gaps (no fake search volume)</p>
+        </div>
+        <div class="filter-pills" id="kw-filters">
+          <button class="chip active" data-intent="all">All</button>
+          <button class="chip" data-intent="Commercial">Commercial</button>
+          <button class="chip" data-intent="Solution-Aware">Solution-Aware</button>
+          <button class="chip" data-intent="Informational">Informational</button>
+        </div>
+      </div>
+      <div id="keyword-cloud" class="keyword-cloud"></div>
+    </section>
+
+    <!-- Blog Draft Approval Queue -->
+    <section class="glass-card section-block">
+      <div class="panel-head">
+        <div>
+          <h2>Blog Outline Approval Queue (Drafts Only)</h2>
+          <p class="panel-sub">Approve or reject outlines in local queue — never publishes to GeneMeal or external sites</p>
+        </div>
+        <span id="drafts-summary" class="count-pill">0 drafts</span>
+      </div>
+      <div id="drafts-grid" class="drafts-grid"></div>
+    </section>
+
+    <footer class="footer-note">
+      <p>
+        Honest SEO Telemetry: Every page metric, response latency, header check, and autocomplete query is measured live by GeneMeal SEO Bot. No paid links, no comment spam, no artificial traffic or fake clicks. Free-plan Render disk is ephemeral; startup runs a fresh audit automatically if empty.
+      </p>
+    </footer>
+  </div>
+
+  <!-- Control Token Modal -->
+  <div id="token-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="token-modal-title">
+    <div class="modal-card glass-card">
+      <h3 id="token-modal-title">Unlock Bot Controls</h3>
+      <p class="modal-desc">
+        Enter the <code>CONTROL_TOKEN</code> configured in your Render service environment variables to trigger audits or update draft statuses.
+      </p>
+      <input id="token-input" type="password" placeholder="Paste CONTROL_TOKEN..." autocomplete="off" />
+      <div id="token-error" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button id="token-cancel" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="token-clear" class="btn btn-secondary" type="button">Clear Saved</button>
+        <button id="token-save" class="btn btn-primary" type="button">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
