@@ -1,0 +1,150 @@
+{% extends "app_base.html" %}
+{% block title %}{{ site.host }} — SEO Audit{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block body %}
+<div class="crumb"><a href="/app/sites">← All sites</a></div>
+
+<header class="topbar glass-card compact-bar">
+  <div>
+    <div class="brand-title-row">
+      <h2>{{ site.host }}</h2>
+      <span id="status-pill" class="status-pill {{ 'status-crawling' if running else 'status-idle' }}">
+        <span class="pulse-dot"></span>
+        <span id="status-text">{{ 'AUDITING' if running else 'READY' }}</span>
+      </span>
+    </div>
+    <p class="brand-sub">Target: <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.url }}</a> · cap 25 pages · robots.txt respected</p>
+  </div>
+  <form method="post" action="/app/sites/{{ site.id }}/run">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button id="run-btn" class="btn btn-primary" type="submit" {% if running %}disabled{% endif %}>▶ Run audit now</button>
+  </form>
+</header>
+
+<section class="kpi-grid" aria-label="Measured Audit Metrics">
+  <article class="kpi-card glass-card">
+    <div class="kpi-label">Measured SEO Score</div>
+    <div class="kpi-value-row">
+      <span id="kpi-score" class="kpi-val gradient-text">--</span>
+      <span class="kpi-unit">/ 100</span>
+    </div>
+    <div id="kpi-score-sub" class="kpi-sub">Waiting for audit run...</div>
+  </article>
+  <article class="kpi-card glass-card">
+    <div class="kpi-label">Pages Audited</div>
+    <div class="kpi-value-row"><span id="kpi-pages" class="kpi-val">0</span><span id="kpi-robots-badges" class="mini-badges"></span></div>
+    <div id="kpi-pages-sub" class="kpi-sub">Live crawl telemetry</div>
+  </article>
+  <article class="kpi-card glass-card">
+    <div class="kpi-label">Prioritized Findings</div>
+    <div class="kpi-value-row"><span id="kpi-issues" class="kpi-val">0</span><span id="kpi-sev-pills" class="mini-badges"></span></div>
+    <div class="kpi-sub">Sorted by organic CTR impact</div>
+  </article>
+  <article class="kpi-card glass-card">
+    <div class="kpi-label">Avg Latency</div>
+    <div class="kpi-value-row"><span id="kpi-ms" class="kpi-val">--</span><span class="kpi-unit">ms</span></div>
+    <div class="kpi-sub">Measured server response time</div>
+  </article>
+</section>
+
+<section class="hero-grid">
+  <article class="gauge-panel glass-card">
+    <div class="panel-head">
+      <div>
+        <h2>Organic Readiness Gauge</h2>
+        <p class="panel-sub">Deterministic score from real HTML, headers &amp; crawl checks</p>
+      </div>
+      <span id="grade-badge" class="grade-badge">--</span>
+    </div>
+    <div class="gauge-wrap">
+      <svg class="score-svg" viewBox="0 0 220 220" aria-label="SEO Score Gauge">
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981" />
+            <stop offset="50%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#8b5cf6" />
+          </linearGradient>
+        </defs>
+        <circle class="gauge-track" cx="110" cy="110" r="88" />
+        <circle id="gauge-arc" class="gauge-arc" cx="110" cy="110" r="88" />
+      </svg>
+      <div class="gauge-center">
+        <div id="gauge-number" class="gauge-number">--</div>
+        <div class="gauge-caption">OVERALL SCORE</div>
+      </div>
+    </div>
+    <div id="pillar-bars" class="pillar-bars"></div>
+  </article>
+  <article class="terminal-panel glass-card">
+    <div class="panel-head">
+      <div class="term-title-wrap">
+        <div class="term-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <h2>Live Audit Activity</h2>
+      </div>
+      <span id="sse-badge" class="sse-badge">CONNECTING SSE...</span>
+    </div>
+    <div id="terminal-log" class="terminal-log" role="log" aria-live="polite"></div>
+  </article>
+</section>
+
+<section class="charts-grid">
+  <article class="glass-card chart-card">
+    <div class="panel-head"><div><h2>Page Score &amp; Response Time</h2><p class="panel-sub">Measured per-URL audit score vs server TTFB</p></div></div>
+    <div class="chart-box"><canvas id="pagesChart"></canvas></div>
+  </article>
+  <article class="glass-card chart-card">
+    <div class="panel-head"><div><h2>Issues by Severity</h2></div></div>
+    <div class="chart-box chart-box-sm"><canvas id="severityChart"></canvas></div>
+  </article>
+  <article class="glass-card chart-card">
+    <div class="panel-head"><div><h2>SEO Pillar Balance</h2></div></div>
+    <div class="chart-box chart-box-sm"><canvas id="radarChart"></canvas></div>
+  </article>
+</section>
+
+<section class="glass-card section-block">
+  <div class="panel-head">
+    <div>
+      <h2>CTR Snippet &amp; Meta Rewrite Studio</h2>
+      <p class="panel-sub">Deterministic rewrites from the page’s own title, H1, and meta — no invented stats or claims</p>
+    </div>
+    <span id="rewrites-count" class="count-pill">0 proposals</span>
+  </div>
+  <div id="rewrites-grid" class="rewrites-grid"></div>
+</section>
+
+<section class="two-col-grid">
+  <article class="glass-card section-block">
+    <div class="panel-head"><div><h2>Prioritized Fix Recommendations</h2></div></div>
+    <div id="issues-list" class="issues-list"></div>
+  </article>
+  <article class="glass-card section-block">
+    <div class="panel-head"><div><h2>Crawled Pages Matrix</h2></div><span id="pages-count" class="count-pill">0 pages</span></div>
+    <div class="table-scroll">
+      <table class="audit-table">
+        <thead><tr><th>Path</th><th>Score</th><th>HTTP</th><th>ms</th><th>Title / Meta</th><th>H1</th><th>Schema</th></tr></thead>
+        <tbody id="pages-tbody"></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="glass-card section-block">
+  <div class="panel-head">
+    <div>
+      <h2>Keyword Opportunity Cloud</h2>
+      <p class="panel-sub">Google Autocomplete ideas from this site’s own headings — no fabricated search volume</p>
+    </div>
+  </div>
+  <div id="keyword-cloud" class="keyword-cloud"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.TENANT_SITE_ID = {{ site.id }};
+  window.TENANT_CSRF = {{ csrf_token|tojson }};
+</script>
+<script src="/static/tenant-dashboard.js"></script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "app_base.html" %}
+{% block title %}Your sites — SEO Audit Prototype{% endblock %}
+{% block body %}
+<section class="glass-card section-block">
+  <div class="panel-head">
+    <div>
+      <h2>Your websites</h2>
+      <p class="panel-sub">{{ site_count }} of {{ max_sites }} sites in this prototype · robots-safe audits, up to 25 pages each</p>
+    </div>
+  </div>
+
+  <form method="post" action="/app/sites" class="add-site-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <label class="grow">Website URL
+      <input type="url" name="url" placeholder="https://example.com" required maxlength="2048" {% if site_count >= max_sites %}disabled{% endif %} />
+    </label>
+    <button class="btn btn-primary" type="submit" {% if site_count >= max_sites %}disabled{% endif %}>Add website</button>
+  </form>
+  <p class="hint">Public http(s) sites only. Localhost, private, and internal hosts are blocked. Plans coming soon ($9–29/mo per site).</p>
+</section>
+
+<section class="sites-grid">
+  {% if not sites %}
+    <article class="glass-card section-block empty-sites">
+      <h3>No sites yet</h3>
+      <p class="panel-sub">Add a public website URL to run an on-page and technical SEO audit.</p>
+    </article>
+  {% endif %}
+  {% for s in sites %}
+    <article class="glass-card site-card">
+      <div class="site-card-top">
+        <a class="site-host" href="/app/sites/{{ s.id }}">{{ s.host }}</a>
+        {% if s.last_score is not none %}
+          <span class="score-pill score-{{ 'good' if s.last_score >= 80 else 'mid' if s.last_score >= 60 else 'low' }}">{{ '%.1f'|format(s.last_score) }}</span>
+        {% else %}
+          <span class="count-pill">{{ s.last_status or 'Not audited' }}</span>
+        {% endif %}
+      </div>
+      <p class="site-url">{{ s.url }}</p>
+      <p class="panel-sub">{% if s.last_finished_at %}Last run: {{ s.last_finished_at }}{% else %}No audit yet{% endif %}</p>
+      <div class="draft-actions">
+        <a class="btn btn-secondary btn-sm" href="/app/sites/{{ s.id }}">Open dashboard</a>
+        <form method="post" action="/app/sites/{{ s.id }}/delete" onsubmit="return confirm('Remove this site and its audit history?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn btn-sm btn-reject" type="submit">Remove</button>
+        </form>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

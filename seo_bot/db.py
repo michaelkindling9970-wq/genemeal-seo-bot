@@ -20,6 +20,7 @@ def utc_now_iso() -> str:
 def get_conn():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
         conn.commit()
@@ -151,6 +152,35 @@ def init_db() -> None:
                 ctr REAL DEFAULT 0,
                 position REAL DEFAULT 0,
                 payload_json TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS sites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                url TEXT NOT NULL,
+                host TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, host),
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS site_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site_id INTEGER NOT NULL,
+                started_at TEXT NOT NULL,
+                finished_at TEXT,
+                status TEXT NOT NULL,
+                pages_crawled INTEGER DEFAULT 0,
+                overall_score REAL DEFAULT 0,
+                result_json TEXT DEFAULT '{}',
+                FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE
             );
             """
         )
@@ -663,3 +693,129 @@ def get_dashboard_snapshot() -> Dict[str, Any]:
         "drafts": drafts,
         "gsc": get_latest_gsc(),
     }
+
+
+MAX_SITES_PER_USER = 3
+
+
+def create_user(email: str, password_hash: str) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+            (email, password_hash, utc_now_iso()),
+        )
+        return cur.lastrowid
+
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def delete_user(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM site_runs WHERE site_id IN (SELECT id FROM sites WHERE user_id = ?)", (user_id,))
+        conn.execute("DELETE FROM sites WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+def list_sites(user_id: int) -> List[Dict[str, Any]]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT s.*,
+                   (SELECT overall_score FROM site_runs WHERE site_id = s.id AND status = 'completed' ORDER BY id DESC LIMIT 1) AS last_score,
+                   (SELECT status FROM site_runs WHERE site_id = s.id ORDER BY id DESC LIMIT 1) AS last_status,
+                   (SELECT finished_at FROM site_runs WHERE site_id = s.id ORDER BY id DESC LIMIT 1) AS last_finished_at
+            FROM sites s
+            WHERE s.user_id = ?
+            ORDER BY s.id ASC
+            """,
+            (user_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def count_sites(user_id: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM sites WHERE user_id = ?", (user_id,)).fetchone()
+        return int(row["n"] if row else 0)
+
+
+def add_site(user_id: int, url: str, host: str) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO sites (user_id, url, host, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, url, host, utc_now_iso()),
+        )
+        return cur.lastrowid
+
+
+def get_site(site_id: int) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM sites WHERE id = ?", (site_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def delete_site(site_id: int, user_id: int) -> bool:
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM site_runs WHERE site_id IN (SELECT id FROM sites WHERE id = ? AND user_id = ?)",
+            (site_id, user_id),
+        )
+        cur = conn.execute("DELETE FROM sites WHERE id = ? AND user_id = ?", (site_id, user_id))
+        return cur.rowcount > 0
+
+
+def create_site_run(site_id: int) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO site_runs (site_id, started_at, status) VALUES (?, ?, 'running')",
+            (site_id, utc_now_iso()),
+        )
+        return cur.lastrowid
+
+
+def finish_site_run(run_id: int, status: str, pages_crawled: int, overall_score: float, result: Dict[str, Any]) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE site_runs SET finished_at = ?, status = ?, pages_crawled = ?, overall_score = ?, result_json = ?
+            WHERE id = ?
+            """,
+            (utc_now_iso(), status, pages_crawled, overall_score, json.dumps(result), run_id),
+        )
+
+
+def latest_site_run(site_id: int) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM site_runs WHERE site_id = ? ORDER BY id DESC LIMIT 1",
+            (site_id,),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["result"] = json.loads(d.pop("result_json") or "{}")
+        return d
+
+
+def latest_completed_site_run(site_id: int) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM site_runs WHERE site_id = ? AND status = 'completed' ORDER BY id DESC LIMIT 1",
+            (site_id,),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["result"] = json.loads(d.pop("result_json") or "{}")
+        return d
+

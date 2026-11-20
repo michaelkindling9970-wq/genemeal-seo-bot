@@ -138,22 +138,33 @@ async def scheduler_loop() -> None:
         await execute_audit(trigger="scheduled", include_keywords=True)
 
 
+SKIP_SCHEDULER = os.environ.get("SEO_SKIP_SCHEDULER", "").strip().lower() in {"1", "true", "yes"}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    task = asyncio.create_task(scheduler_loop())
+    task = None
+    if not SKIP_SCHEDULER:
+        task = asyncio.create_task(scheduler_loop())
     try:
         yield
     finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
-app = FastAPI(title="GeneMeal SEO Bot", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="GeneMeal SEO Bot", version="1.1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+from seo_bot.tenant_routes import configure as configure_tenant_routes
+
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+app.include_router(configure_tenant_routes(str(TEMPLATES_DIR)))
 
 
 def require_control_token(

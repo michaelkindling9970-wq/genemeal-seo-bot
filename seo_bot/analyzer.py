@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 
@@ -37,7 +38,7 @@ def _visible_word_count(soup: BeautifulSoup) -> int:
     return len(words)
 
 
-def _suggest_ctr_rewrite(page: Dict[str, Any]) -> Dict[str, Any] | None:
+def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None:
     path = page["path"]
     cur_title = page["title"] or "(missing)"
     cur_meta = page["meta_description"] or "(missing)"
@@ -113,6 +114,161 @@ def _suggest_ctr_rewrite(page: Dict[str, Any]) -> Dict[str, Any] | None:
         "rationale": rationale,
         "expected_ctr_impact": impact,
     }
+
+
+
+TITLE_MIN, TITLE_MAX = 30, 62
+META_MIN, META_MAX = 110, 160
+TITLE_AIM = 58
+META_AIM = 155
+_INVENTED_CLAIM_RE = re.compile(
+    r"(#1|n[o°]\s*1|number one|world.?s best|guaranteed|100%|\b\d{2,}%\s*off|\b\$\d)",
+    re.I,
+)
+
+
+def is_genemeal_target(target_url: str) -> bool:
+    host = urlparse(target_url or "").hostname or ""
+    host = host.rstrip(".").lower().removeprefix("www.")
+    return host == "genemeal.onrender.com"
+
+
+def _brand_from_host(host: str) -> str:
+    host = (host or "").rstrip(".").lower().removeprefix("www.")
+    label = host.split(".")[0] if host else "Site"
+    return label.replace("-", " ").replace("_", " ").title() or "Site"
+
+
+def _path_label(path: str) -> str:
+    path = (path or "/").strip("/")
+    if not path:
+        return "Home"
+    slug = path.split("/")[-1].replace("-", " ").replace("_", " ").strip()
+    return slug.title() if slug else "Home"
+
+
+def _trim_chars(text: str, max_len: int) -> str:
+    text = re.sub(r"\s+", " ", (text or "").strip())
+    if len(text) <= max_len:
+        return text
+    cut = text[:max_len].rsplit(" ", 1)[0].rstrip(" ,;:.-")
+    if len(cut) < max(12, int(max_len * 0.55)):
+        cut = text[:max_len].rstrip()
+    return cut
+
+
+def _generic_title(page: Dict[str, Any], brand: str) -> str:
+    raw = (page.get("title") or "").strip()
+    h1 = (page.get("h1_text") or "").strip()
+    path = page.get("path") or "/"
+    base = raw or h1 or _path_label(path) or brand
+    base = re.sub(r"\s+", " ", base).strip()
+    if len(base) > TITLE_MAX:
+        return _trim_chars(base, TITLE_AIM)
+    if len(base) < TITLE_MIN:
+        pieces = [base]
+        if brand and brand.lower() not in base.lower():
+            pieces.append(brand)
+        label = _path_label(path)
+        if path not in ("", "/") and label.lower() not in " ".join(pieces).lower():
+            pieces.append(label)
+        # Join deterministically without inventing claims or numbers.
+        candidate = " | ".join([p for p in pieces if p])
+        if len(candidate) < TITLE_MIN and h1 and h1.lower() not in candidate.lower():
+            candidate = f"{h1} | {candidate}" if candidate else h1
+        if len(candidate) < TITLE_MIN:
+            candidate = f"{candidate} | {brand} website".strip(" |")
+        if len(candidate) < TITLE_MIN:
+            candidate = f"{candidate} | {_path_label(path)} page title"
+        return _trim_chars(candidate, TITLE_MAX)
+    return base
+
+
+def _generic_meta(page: Dict[str, Any], brand: str, title: str) -> str:
+    raw = (page.get("meta_description") or "").strip()
+    h1 = (page.get("h1_text") or "").strip()
+    path = page.get("path") or "/"
+    topic = h1 or title or _path_label(path) or brand
+    if raw and META_MIN <= len(raw) <= META_MAX:
+        return raw
+    if raw and len(raw) > META_MAX:
+        return _trim_chars(raw, META_AIM)
+    parts = []
+    if raw:
+        parts.append(raw.rstrip(" ."))
+    else:
+        parts.append(topic.rstrip(" ."))
+    if brand and brand.lower() not in " ".join(parts).lower():
+        parts.append(f"Published by {brand}")
+    label = _path_label(path)
+    blob = ". ".join(parts) + "."
+    if len(blob) < META_MIN:
+        extra = (
+            f" This {_path_label(path).lower()} page uses the site's own heading"
+            f"{f' ({h1})' if h1 else ''} and on-page copy as the basis for a clearer snippet."
+        )
+        blob = blob.rstrip(".") + "." + extra
+    return _trim_chars(blob, META_AIM)
+
+
+def _suggest_ctr_rewrite_generic(page: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    host = urlparse(page.get("url") or "").hostname or ""
+    brand = _brand_from_host(host)
+    cur_title = (page.get("title") or "").strip() or "(missing)"
+    cur_meta = (page.get("meta_description") or "").strip() or "(missing)"
+    sug_title = _generic_title(page, brand)
+    sug_meta = _generic_meta(page, brand, sug_title if sug_title else cur_title)
+
+    # Never introduce promotional numbers or ranking claims that were not on the page.
+    source = " ".join([cur_title if cur_title != "(missing)" else "", cur_meta if cur_meta != "(missing)" else "", page.get("h1_text") or ""])
+    for candidate_name, candidate in (("title", sug_title), ("meta", sug_meta)):
+        if _INVENTED_CLAIM_RE.search(candidate) and not _INVENTED_CLAIM_RE.search(source):
+            # Strip the invented fragment by falling back to a trimmed source string.
+            if candidate_name == "title":
+                sug_title = _trim_chars(page.get("h1_text") or brand, TITLE_MAX)
+            else:
+                sug_meta = _trim_chars(
+                    (page.get("meta_description") or page.get("h1_text") or f"Page information from {brand}."),
+                    META_AIM,
+                )
+
+    if cur_title == sug_title and cur_meta == sug_meta:
+        return None
+
+    reasons = []
+    if cur_title == "(missing)":
+        reasons.append("the current title tag is missing")
+    elif not (TITLE_MIN <= len(page.get("title") or "") <= TITLE_MAX):
+        reasons.append(f"the current title is {len(page.get('title') or '')} characters (aim {TITLE_MIN}–{TITLE_MAX})")
+    if cur_meta == "(missing)":
+        reasons.append("the current meta description is missing")
+    elif not (META_MIN <= len(page.get("meta_description") or "") <= META_MAX):
+        reasons.append(
+            f"the current meta description is {len(page.get('meta_description') or '')} characters (aim {META_MIN}–{META_MAX})"
+        )
+    if not reasons:
+        reasons.append("a tighter snippet can use the visible heading and site name without adding unsubstantiated claims")
+
+    title_gap = cur_title == "(missing)" or not (TITLE_MIN <= len(page.get("title") or "") <= TITLE_MAX)
+    meta_gap = cur_meta == "(missing)" or not (META_MIN <= len(page.get("meta_description") or "") <= META_MAX)
+    impact = "High" if (cur_title == "(missing)" or cur_meta == "(missing)") else ("Medium" if title_gap or meta_gap else "Low")
+
+    return {
+        "page_url": page.get("url") or "",
+        "path": page.get("path") or "/",
+        "current_title": cur_title,
+        "suggested_title": sug_title,
+        "current_meta": cur_meta,
+        "suggested_meta": sug_meta,
+        "rationale": "Suggested from the page's existing title, H1, and meta: " + "; ".join(reasons) + ".",
+        "expected_ctr_impact": impact,
+    }
+
+
+def suggest_ctr_rewrite(page: Dict[str, Any], target_url: str = "") -> Optional[Dict[str, Any]]:
+    if is_genemeal_target(target_url) or is_genemeal_target(page.get("url") or ""):
+        return _suggest_ctr_rewrite_genemeal(page)
+    return _suggest_ctr_rewrite_generic(page)
 
 
 def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -493,7 +649,7 @@ def analyze_crawl(crawl_data: Dict[str, Any]) -> Dict[str, Any]:
         }
         audited_pages.append(page_record)
 
-        rw = _suggest_ctr_rewrite(page_record)
+        rw = suggest_ctr_rewrite(page_record, crawl_data.get("target_url") or "")
         if rw:
             rewrites.append(rw)
 

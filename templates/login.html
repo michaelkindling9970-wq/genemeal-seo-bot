@@ -1,0 +1,20 @@
+{% extends "app_base.html" %}
+{% block title %}Log in — SEO Audit Prototype{% endblock %}
+{% block body %}
+<section class="auth-card glass-card">
+  <h2>Log in</h2>
+  <p class="panel-sub">Use the email and password you signed up with. Sessions use a secure httpOnly cookie.</p>
+  <form method="post" action="/app/login" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="next" value="{{ next_url or '/app/sites' }}" />
+    <label>Email
+      <input type="email" name="email" value="{{ email or '' }}" required autocomplete="username" maxlength="254" />
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password" minlength="8" maxlength="128" />
+    </label>
+    <button class="btn btn-primary" type="submit">Log in</button>
+  </form>
+  <p class="auth-switch">New here? <a href="/app/signup">Create an account</a></p>
+</section>
+{% endblock %}

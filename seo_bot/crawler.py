@@ -9,6 +9,8 @@ from urllib.robotparser import RobotFileParser
 import httpx
 from bs4 import BeautifulSoup
 
+from seo_bot.ssrf import UnsafeURLError, assert_public_http_url, is_public_http_url
+
 TARGET_URL = os.environ.get("TARGET_URL", "https://genemeal.onrender.com").rstrip("/")
 USER_AGENT = "GeneMealSEOBot/1.0 (+https://genemeal.onrender.com; organic-seo-audit)"
 MAX_PAGES = int(os.environ.get("SEO_MAX_PAGES", "20"))
@@ -41,6 +43,23 @@ def should_skip_asset(url: str) -> bool:
     return any(path.endswith(ext) for ext in SKIP_EXTENSIONS)
 
 
+
+async def safe_request(client: httpx.AsyncClient, method: str, url: str, **kwargs) -> httpx.Response:
+    """Fetch a URL, validating each hop so redirects cannot target private hosts."""
+    current = url
+    for _ in range(5):
+        assert_public_http_url(current)
+        resp = await client.request(method, current, follow_redirects=False, **kwargs)
+        if resp.status_code in (301, 302, 303, 307, 308):
+            loc = resp.headers.get("location")
+            if not loc:
+                return resp
+            current = urljoin(str(resp.url), loc)
+            continue
+        return resp
+    raise UnsafeURLError("Too many redirects while fetching that URL.")
+
+
 async def fetch_robots(client: httpx.AsyncClient, base_url: str, emit: EmitFn) -> Tuple[bool, RobotFileParser, List[str]]:
     robots_url = f"{base_url}/robots.txt"
     rp = RobotFileParser()
@@ -48,7 +67,7 @@ async def fetch_robots(client: httpx.AsyncClient, base_url: str, emit: EmitFn) -
     sitemaps: List[str] = []
     await emit("info", "robots", f"Fetching {robots_url} ...", {"url": robots_url})
     try:
-        resp = await client.get(robots_url)
+        resp = await safe_request(client, 'GET', robots_url)
         if resp.status_code == 200 and "user-agent" in resp.text.lower():
             lines = resp.text.splitlines()
             rp.parse(lines)
@@ -83,7 +102,7 @@ async def fetch_sitemap(
     for sm_url in candidates[:3]:
         await emit("info", "sitemap", f"Inspecting XML sitemap at {sm_url} ...", {"url": sm_url})
         try:
-            resp = await client.get(sm_url)
+            resp = await safe_request(client, 'GET', sm_url)
             if resp.status_code != 200:
                 await emit("warn", "sitemap", f"Sitemap {sm_url} returned HTTP {resp.status_code}.", {"status": resp.status_code})
                 continue
@@ -106,12 +125,20 @@ async def fetch_sitemap(
     return found_any, discovered
 
 
-async def crawl_site(emit: EmitFn, target_url: str = TARGET_URL) -> Dict[str, Any]:
+async def crawl_site(
+    emit: EmitFn,
+    target_url: str = TARGET_URL,
+    max_pages: Optional[int] = None,
+    polite_delay: Optional[float] = None,
+) -> Dict[str, Any]:
+    page_cap = max_pages if max_pages is not None else MAX_PAGES
+    delay = polite_delay if polite_delay is not None else POLITE_DELAY_SEC
+    assert_public_http_url(target_url)
     base_url = target_url.rstrip("/")
     base_netloc = urlparse(base_url).netloc
 
     async with httpx.AsyncClient(
-        follow_redirects=True,
+        follow_redirects=False,
         timeout=httpx.Timeout(15.0, connect=8.0),
         headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
     ) as client:
@@ -129,6 +156,8 @@ async def crawl_site(emit: EmitFn, target_url: str = TARGET_URL) -> Dict[str, An
                 return
             if should_skip_asset(nu):
                 return
+            if not is_public_http_url(nu):
+                return
             if not rp.can_fetch(USER_AGENT, nu):
                 return
             seen_queued.add(nu)
@@ -142,14 +171,14 @@ async def crawl_site(emit: EmitFn, target_url: str = TARGET_URL) -> Dict[str, An
         status_cache: Dict[str, int] = {}
         disallowed_skipped: Set[str] = set()
 
-        while queue and len(crawled_pages) < MAX_PAGES:
+        while queue and len(crawled_pages) < page_cap:
             url = queue.pop(0)
             path = urlparse(url).path or "/"
             await emit("info", "crawl", f"Crawling {path} ...", {"url": url, "index": len(crawled_pages) + 1})
 
             t0 = time.perf_counter()
             try:
-                resp = await client.get(url)
+                resp = await safe_request(client, 'GET', url)
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
                 final_url = normalize_url(str(resp.url))
                 status_cache[url] = resp.status_code
@@ -218,7 +247,7 @@ async def crawl_site(emit: EmitFn, target_url: str = TARGET_URL) -> Dict[str, An
                 )
                 await emit("error", "crawl", f"Error fetching {path}: {exc}", {"path": path})
 
-            await asyncio.sleep(POLITE_DELAY_SEC)
+            await asyncio.sleep(delay)
 
         # Politely check any remaining allowed internal links for broken status (cap 15)
         unchecked: List[str] = []
@@ -228,9 +257,11 @@ async def crawl_site(emit: EmitFn, target_url: str = TARGET_URL) -> Dict[str, An
                     unchecked.append(link)
         for link in unchecked[:15]:
             try:
-                r = await client.head(link)
+                if not is_public_http_url(link):
+                    continue
+                r = await safe_request(client, "HEAD", link)
                 if r.status_code == 405:
-                    r = await client.get(link)
+                    r = await safe_request(client, "GET", link)
                 status_cache[link] = r.status_code
                 await asyncio.sleep(0.15)
             except Exception:

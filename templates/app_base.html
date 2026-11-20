@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}SEO Audit Prototype{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2'%3E%3Cpath d='M12 2L14.8 8.2L21 9.2L16.5 13.6L17.6 20L12 16.9L6.4 20L7.5 13.6L3 9.2L9.2 8.2L12 2Z'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/tenant.css" />
+  {% block head %}{% endblock %}
+</head>
+<body class="tenant-body">
+  <canvas id="sparkle-canvas" aria-hidden="true"></canvas>
+  <div class="aurora aurora-1" aria-hidden="true"></div>
+  <div class="aurora aurora-2" aria-hidden="true"></div>
+
+  <div class="app-shell tenant-shell">
+    <div class="prototype-banner" role="status">
+      Prototype — data may reset. Accounts and audits live in ephemeral SQLite on Render’s free plan and are wiped on spin-down or redeploy. Paid plans ($9–29/mo per site) coming soon. No payment is collected here.
+    </div>
+
+    <header class="topbar glass-card">
+      <div class="brand-cluster">
+        <a class="bot-avatar" href="/app/sites" aria-label="SEO Audit home">
+          <div class="bot-ring"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2L14.8 8.2L21 9.2L16.5 13.6L17.6 20L12 16.9L6.4 20L7.5 13.6L3 9.2L9.2 8.2L12 2Z" />
+          </svg>
+        </a>
+        <div>
+          <div class="brand-title-row">
+            <h1><a href="/app/sites">SEO Audit</a></h1>
+            <span class="status-pill status-idle">Prototype</span>
+          </div>
+          <p class="brand-sub">Multi-site organic audits · plans coming soon ($9–29/mo per site)</p>
+        </div>
+      </div>
+      <div class="controls-cluster">
+        <a class="btn btn-ghost" href="/">GeneMeal console</a>
+        {% if logged_in %}
+          <span class="user-chip">{{ user_email }}</span>
+          <form method="post" action="/app/logout" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-ghost" type="submit">Log out</button>
+          </form>
+        {% else %}
+          <a class="btn btn-ghost" href="/app/login">Log in</a>
+          <a class="btn btn-primary" href="/app/signup">Sign up</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if error %}
+      <div class="flash flash-error" role="alert">{{ error }}</div>
+    {% endif %}
+    {% if notice %}
+      <div class="flash flash-ok" role="status">{{ notice }}</div>
+    {% endif %}
+
+    {% block body %}{% endblock %}
+
+    <footer class="footer-note">
+      Honest, robots-safe technical audits only. No paid links, no comment spam, no fake traffic. This is a free-plan prototype — storage is temporary.
+      {% if logged_in %}
+        <form method="post" action="/app/account/delete" class="inline-form delete-account" onsubmit="return confirm('Delete this account and all of its sites and audits? This cannot be undone.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button type="submit" class="text-btn">Delete my account</button>
+        </form>
+      {% endif %}
+    </footer>
+  </div>
+  <script src="/static/tenant.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

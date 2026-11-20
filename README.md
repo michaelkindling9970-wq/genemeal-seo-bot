@@ -42,3 +42,13 @@ Payload shape:
 The dashboard shows impressions, clicks, CTR, average position, top queries/pages, and last-synced time. When no rows have been ingested, it shows: "Search Console connected; Google is still collecting data, usually 2-3 days after verification".
 
 Latest snapshots are stored in SQLite, a JSON cache file (`GSC_CACHE_PATH`, default `/tmp/gsc_latest.json`), and process memory. On Render's free plan all three are ephemeral and reset on spin-down, redeploy, or restart.
+
+## Multi-site audit prototype (`/app`)
+A free-plan prototype for auditing additional public websites:
+
+- Sign up / log in: `/app/signup`, `/app/login` (email + password, bcrypt, httpOnly session cookie, CSRF, rate limits)
+- Add up to 3 public http(s) sites, then open `/app/sites/{id}` and run a robots-safe audit (25-page cap)
+- Generic CTR title/meta rewrites for non-GeneMeal sites (GeneMeal's own rewrite behavior is unchanged)
+- Plans coming soon ($9–29/mo per site). No payment is collected in this prototype.
+
+**Storage is ephemeral:** SQLite lives in `/tmp` on Render's free plan, so accounts and audits can reset on spin-down or redeploy.
