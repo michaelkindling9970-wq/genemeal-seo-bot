@@ -46,8 +46,8 @@ def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None
     if path == "/":
         sug_title = "GeneMeal: Weekly Nutrigenomic Meal Plans ($34.97/mo)"
         sug_meta = (
-            "Real-time meal-planning subscription with weekly nutrigenomic updates tailored to your DNA file. "
-            "$34.97/mo, cancel anytime. Not a DNA test or medical advice."
+            "Real-time meal-planning subscription with weekly nutrigenomic meal plan updates. "
+            "$34.97/month, cancel anytime. Not a DNA test or medical advice."
         )
         rationale = (
             "Leads with transparent $34.97/mo subscription pricing, clarifies weekly nutrigenomic updates, "
@@ -55,23 +55,34 @@ def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None
         )
         impact = "High"
     elif path == "/pricing":
-        sug_title = "GeneMeal Pricing: $34.97/mo Weekly DNA Meal Plan Subscription"
+        sug_title = "GeneMeal Pricing: $34.97/mo Nutrigenomic Meal Plans"
         sug_meta = (
-            "Simple $34.97/month meal-planning subscription with fresh weekly nutrigenomic meal plan updates "
-            "from your existing DNA file. No test kit sold. Not medical advice."
+            "Simple $34.97/month meal-planning subscription with fresh weekly nutrigenomic meal plan updates. "
+            "Cancel anytime. Not a DNA test or medical advice."
         )
         rationale = (
             "Puts the exact $34.97/mo price and weekly refresh value directly in the SERP title and snippet "
             "to boost commercial click-throughs on pricing queries."
         )
         impact = "High"
+    elif path == "/research/stress-diet":
+        sug_title = "Stress, diet, and genetics | GeneMeal Research"
+        sug_meta = (
+            "An educational look at nutrigenomic research on stress, diet, and weekly meal planning. "
+            "From GeneMeal ($34.97/month). Not medical advice."
+        )
+        rationale = (
+            "Aligns editorial research snippet with actionable meal-planning intent while maintaining "
+            "clear non-medical-advice positioning and brand recognition."
+        )
+        impact = "Medium"
     elif path.startswith("/research/"):
         topic = page["h1_text"] or page["title"] or "Nutrigenomics Research"
         clean_topic = re.sub(r"\s*[—|-]\s*GeneMeal.*$", "", topic).strip()
         sug_title = f"{clean_topic[:42]} | GeneMeal Research"
         sug_meta = (
-            f"Explore how nutrigenomic research informs {clean_topic.lower()} and weekly meal planning. "
-            "Educational guide from GeneMeal ($34.97/mo meal subscription; not medical advice)."
+            f"An educational look at nutrigenomic research on {clean_topic.lower()} and weekly meal planning. "
+            "From GeneMeal ($34.97/month). Not medical advice."
         )
         rationale = (
             "Aligns editorial research snippet with actionable meal-planning intent while maintaining "
@@ -81,8 +92,8 @@ def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None
     elif path == "/about":
         sug_title = "About GeneMeal | Real-Time Nutrigenomic Meal Planning"
         sug_meta = (
-            "How GeneMeal turns your existing DNA data into weekly updated, real-time meal plans for "
-            "$34.97/mo. Software meal planner only—not a DNA test or medical advice."
+            "About GeneMeal: a $34.97/month real-time meal-planning subscription with weekly nutrigenomic "
+            "updates. Not a DNA test or medical advice."
         )
         rationale = (
             "Clarifies product positioning immediately in search results so visitors understand GeneMeal "
@@ -92,8 +103,8 @@ def _suggest_ctr_rewrite_genemeal(page: Dict[str, Any]) -> Dict[str, Any] | None
     elif path == "/contact":
         sug_title = "Contact GeneMeal Support | Meal Plan Subscription Help"
         sug_meta = (
-            "Questions about your GeneMeal $34.97/mo weekly nutrigenomic meal plan subscription? "
-            "Reach our support team quickly for account, billing, or plan assistance."
+            "Questions about GeneMeal's $34.97/month weekly nutrigenomic meal plan subscription? "
+            "Contact us for account, billing, or plan help."
         )
         rationale = "Adds clear support intent and concise 145-char meta description for branded support searches."
         impact = "Low"
