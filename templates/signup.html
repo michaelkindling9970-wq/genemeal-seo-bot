@@ -1,8 +1,8 @@
 {% extends "app_base.html" %}
-{% block title %}Sign up — SEO Audit Prototype{% endblock %}
+{% block title %}Sign up — Traction{% endblock %}
 {% block body %}
 <section class="auth-card glass-card">
-  <h2>Create a free prototype account</h2>
+  <h2>Create a free Traction account</h2>
   <p class="panel-sub">Email and password only — no confirmation email is sent. Data may reset when this free service sleeps or redeploys.</p>
   <form method="post" action="/app/signup" class="auth-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

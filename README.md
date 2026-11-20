@@ -43,8 +43,8 @@ The dashboard shows impressions, clicks, CTR, average position, top queries/page
 
 Latest snapshots are stored in SQLite, a JSON cache file (`GSC_CACHE_PATH`, default `/tmp/gsc_latest.json`), and process memory. On Render's free plan all three are ephemeral and reset on spin-down, redeploy, or restart.
 
-## Multi-site audit prototype (`/app`)
-A free-plan prototype for auditing additional public websites:
+## Traction (`/app`)
+Traction is a free-plan prototype for auditing additional public websites:
 
 - Sign up / log in: `/app/signup`, `/app/login` (email + password, bcrypt, httpOnly session cookie, CSRF, rate limits)
 - Add up to 3 public http(s) sites, then open `/app/sites/{id}` and run a robots-safe audit (25-page cap)
@@ -54,6 +54,6 @@ A free-plan prototype for auditing additional public websites:
   - Starter: $12/month, 1 site, weekly or on-demand audits
   - Pro: $24/month, up to 3 sites
   - One-time audit: $39–$49
-  This prototype still allows up to 3 sites and 25-page audits; plan limits are not enforced and payment is not enabled.
+  Traction still allows up to 3 sites and 25-page audits; plan limits are not enforced and payment is not enabled.
 
 **Storage is ephemeral:** SQLite lives in `/tmp` on Render's free plan, so accounts and audits can reset on spin-down or redeploy.

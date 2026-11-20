@@ -284,7 +284,7 @@ async def sites_add(request: Request, url: str = Form(""), csrf_token: str = For
     except Exception as exc:
         return RedirectResponse("/app/sites?error=" + quote(str(getattr(exc, "detail", exc))), status_code=303)
     if count_sites(uid) >= MAX_SITES_PER_USER:
-        return RedirectResponse("/app/sites?error=" + quote(f"Prototype cap is {MAX_SITES_PER_USER} sites per account."), status_code=303)
+        return RedirectResponse("/app/sites?error=" + quote(f"Traction accounts are limited to {MAX_SITES_PER_USER} sites."), status_code=303)
     try:
         clean = assert_public_http_url(url)
     except UnsafeURLError as exc:
