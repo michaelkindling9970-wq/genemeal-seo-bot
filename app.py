@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -29,6 +29,7 @@ from seo_bot.db import (
     save_gsc_ingest,
 )
 from seo_bot.keywords import build_blog_drafts, discover_keywords
+from seo_bot.site_seo import robots_txt, should_noindex_api_or_docs, sitemap_xml
 
 STATIC_DIR = Path(__file__).parent / "static"
 SCHEDULE_HOURS = float(os.environ.get("SEO_SCHEDULE_HOURS", "6"))
@@ -167,6 +168,14 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 app.include_router(configure_tenant_routes(str(TEMPLATES_DIR)))
 
 
+@app.middleware("http")
+async def noindex_api_and_docs(request: Request, call_next):
+    response = await call_next(request)
+    if should_noindex_api_or_docs(request.url.path):
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
 def require_control_token(
     x_control_token: Optional[str] = Header(default=None),
     authorization: Optional[str] = Header(default=None),
@@ -219,6 +228,16 @@ class GscIngestBody(BaseModel):
 @app.get("/")
 async def index():
     return FileResponse(str(STATIC_DIR / "index.html"))
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots():
+    return PlainTextResponse(robots_txt(), media_type="text/plain; charset=utf-8")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap():
+    return Response(sitemap_xml(), media_type="application/xml; charset=utf-8")
 
 
 @app.get("/healthz")

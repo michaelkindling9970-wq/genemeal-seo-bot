@@ -10,6 +10,7 @@ from urllib.parse import quote, urlparse
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from seo_bot.site_seo import public_origin
 
 from seo_bot.analyzer import analyze_crawl
 from seo_bot.auth import (
@@ -57,6 +58,7 @@ site_status: dict[int, str] = {}
 def configure(template_dir: str) -> APIRouter:
     global templates
     templates = Jinja2Templates(directory=template_dir)
+    templates.env.globals["public_origin"] = public_origin()
     return router
 
 

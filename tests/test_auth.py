@@ -99,13 +99,13 @@ def test_pricing_tiers_are_displayed_without_checkout(client):
     signup = client.get("/app/signup")
     assert signup.status_code == 200
     _assert_plans_displayed(signup.text)
-    assert "<title>Sign up — Traction</title>" in signup.text
+    assert "<title>Sign up for Traction | Multi-Site SEO Audits</title>" in signup.text
     assert "Create a free Traction account" in signup.text
 
     login = client.get("/app/login")
     assert login.status_code == 200
     _assert_plans_displayed(login.text)
-    assert "<title>Log in — Traction</title>" in login.text
+    assert "<title>Log in to Traction | SEO Audit Account Access</title>" in login.text
 
     token = _csrf(client, "/app/signup")
     client.post("/app/signup", data={"email": "plans@example.com", "password": "correct-horse", "csrf_token": token})
