@@ -18,3 +18,27 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 
 ## Control Token
 Set `CONTROL_TOKEN` in Render's Environment settings to require `X-Control-Token` (or `Authorization: Bearer ...`) for `/api/run`, `/api/keywords/refresh`, and `/api/drafts/{id}/status`. Read endpoints and the live dashboard remain viewable without the token.
+
+## Google Search Console Ingest
+Token-protected endpoint (requires `X-Control-Token` / `CONTROL_TOKEN`):
+
+```
+POST /api/gsc/ingest
+```
+
+Payload shape:
+
+```json
+{
+  "site": "https://genemeal.onrender.com/",
+  "start_date": "2026-11-01",
+  "end_date": "2026-11-20",
+  "totals": { "clicks": 0, "impressions": 0, "ctr": 0, "position": 0 },
+  "queries": [{ "query": "dna meal plan", "clicks": 0, "impressions": 0, "ctr": 0, "position": 0 }],
+  "pages": [{ "page": "https://genemeal.onrender.com/", "clicks": 0, "impressions": 0, "ctr": 0, "position": 0 }]
+}
+```
+
+The dashboard shows impressions, clicks, CTR, average position, top queries/pages, and last-synced time. When no rows have been ingested, it shows: "Search Console connected; Google is still collecting data, usually 2-3 days after verification".
+
+Latest snapshots are stored in SQLite, a JSON cache file (`GSC_CACHE_PATH`, default `/tmp/gsc_latest.json`), and process memory. On Render's free plan all three are ephemeral and reset on spin-down, redeploy, or restart.

@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 DB_PATH = os.environ.get("SEO_DB_PATH", "/tmp/genemeal_seo.db")
+# Latest Search Console ingest also written here so it can outlive a SQLite reset
+# for as long as the free-plan instance filesystem itself lasts (still ephemeral).
+GSC_CACHE_PATH = os.environ.get("GSC_CACHE_PATH", "/tmp/gsc_latest.json")
+_gsc_memory: Optional[Dict[str, Any]] = None
 
 
 def utc_now_iso() -> str:
@@ -135,8 +139,22 @@ def init_db() -> None:
                 message TEXT NOT NULL,
                 meta_json TEXT DEFAULT '{}'
             );
+
+            CREATE TABLE IF NOT EXISTS gsc_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ingested_at TEXT NOT NULL,
+                site TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                clicks REAL DEFAULT 0,
+                impressions REAL DEFAULT 0,
+                ctr REAL DEFAULT 0,
+                position REAL DEFAULT 0,
+                payload_json TEXT NOT NULL
+            );
             """
         )
+        _hydrate_gsc_from_cache()
 
 
 def log_activity(level: str, stage: str, message: str, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -423,6 +441,147 @@ def update_draft_status(draft_id: int, status: str) -> Optional[Dict[str, Any]]:
         return d
 
 
+
+
+def _normalize_gsc_payload(payload: Dict[str, Any], ingested_at: str) -> Dict[str, Any]:
+    totals = payload.get("totals") or {}
+    queries = payload.get("queries") or []
+    pages = payload.get("pages") or []
+    return {
+        "ingested_at": ingested_at,
+        "site": payload.get("site") or "",
+        "start_date": payload.get("start_date") or "",
+        "end_date": payload.get("end_date") or "",
+        "totals": {
+            "clicks": float(totals.get("clicks") or 0),
+            "impressions": float(totals.get("impressions") or 0),
+            "ctr": float(totals.get("ctr") or 0),
+            "position": float(totals.get("position") or 0),
+        },
+        "queries": list(queries),
+        "pages": list(pages),
+        "ephemeral_note": (
+            "Stored in SQLite, a JSON cache file, and process memory. "
+            "On Render's free plan all three reset on spin-down, redeploy, or restart."
+        ),
+    }
+
+
+def _write_gsc_cache(record: Dict[str, Any]) -> None:
+    global _gsc_memory
+    _gsc_memory = record
+    try:
+        cache_dir = os.path.dirname(GSC_CACHE_PATH) or "."
+        os.makedirs(cache_dir, exist_ok=True)
+        tmp_path = GSC_CACHE_PATH + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(record, fh)
+        os.replace(tmp_path, GSC_CACHE_PATH)
+    except OSError:
+        # Memory still holds the latest ingest for the life of this process.
+        pass
+
+
+def _hydrate_gsc_from_cache() -> None:
+    """Restore the latest ingest from the JSON cache if SQLite is empty."""
+    global _gsc_memory
+    if _gsc_memory:
+        return
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT ingested_at, payload_json FROM gsc_snapshots ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        if row:
+            payload = json.loads(row["payload_json"] or "{}")
+            _gsc_memory = _normalize_gsc_payload(payload, row["ingested_at"])
+            return
+    except Exception:
+        pass
+    if not os.path.exists(GSC_CACHE_PATH):
+        return
+    try:
+        with open(GSC_CACHE_PATH, encoding="utf-8") as fh:
+            cached = json.load(fh)
+        if not isinstance(cached, dict):
+            return
+        ingested_at = cached.get("ingested_at") or utc_now_iso()
+        record = _normalize_gsc_payload(cached, ingested_at)
+        _gsc_memory = record
+        # Re-seed SQLite so dashboard reads stay consistent after a DB reset.
+        with get_conn() as conn:
+            totals = record["totals"]
+            conn.execute(
+                """
+                INSERT INTO gsc_snapshots (
+                    ingested_at, site, start_date, end_date, clicks, impressions, ctr, position, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record["ingested_at"],
+                    record["site"],
+                    record["start_date"],
+                    record["end_date"],
+                    totals["clicks"],
+                    totals["impressions"],
+                    totals["ctr"],
+                    totals["position"],
+                    json.dumps(cached),
+                ),
+            )
+    except Exception:
+        return
+
+
+def save_gsc_ingest(payload: Dict[str, Any]) -> Dict[str, Any]:
+    ingested_at = utc_now_iso()
+    record = _normalize_gsc_payload(payload, ingested_at)
+    totals = record["totals"]
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO gsc_snapshots (
+                ingested_at, site, start_date, end_date, clicks, impressions, ctr, position, payload_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ingested_at,
+                record["site"],
+                record["start_date"],
+                record["end_date"],
+                totals["clicks"],
+                totals["impressions"],
+                totals["ctr"],
+                totals["position"],
+                json.dumps(payload),
+            ),
+        )
+        # Keep only the most recent 20 snapshots
+        conn.execute(
+            "DELETE FROM gsc_snapshots WHERE id NOT IN (SELECT id FROM gsc_snapshots ORDER BY id DESC LIMIT 20)"
+        )
+    _write_gsc_cache(record)
+    return record
+
+
+def get_latest_gsc() -> Optional[Dict[str, Any]]:
+    if _gsc_memory:
+        return _gsc_memory
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT ingested_at, payload_json FROM gsc_snapshots ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        if row:
+            record = _normalize_gsc_payload(json.loads(row["payload_json"] or "{}"), row["ingested_at"])
+            _write_gsc_cache(record)
+            return record
+    except Exception:
+        pass
+    if os.path.exists(GSC_CACHE_PATH):
+        _hydrate_gsc_from_cache()
+    return _gsc_memory
+
 def get_dashboard_snapshot() -> Dict[str, Any]:
     with get_conn() as conn:
         latest_run = conn.execute(
@@ -502,4 +661,5 @@ def get_dashboard_snapshot() -> Dict[str, Any]:
         "rewrites": rewrites,
         "keywords": keywords,
         "drafts": drafts,
+        "gsc": get_latest_gsc(),
     }

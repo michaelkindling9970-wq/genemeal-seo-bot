@@ -456,6 +456,83 @@ function updateTokenBadge() {
   }
 }
 
+
+function hasGscRows(gsc) {
+  if (!gsc) return false;
+  const totals = gsc.totals || {};
+  const hasTotals = (Number(totals.clicks) || 0) > 0 || (Number(totals.impressions) || 0) > 0;
+  const hasQueries = Array.isArray(gsc.queries) && gsc.queries.length > 0;
+  const hasPages = Array.isArray(gsc.pages) && gsc.pages.length > 0;
+  return hasTotals || hasQueries || hasPages;
+}
+
+function formatPct(ctr) {
+  const n = Number(ctr);
+  if (!Number.isFinite(n)) return "0%";
+  const pct = n <= 1 ? n * 100 : n;
+  return `${pct.toFixed(2)}%`;
+}
+
+function formatNum(val, decimals = 0) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return "0";
+  return decimals > 0 ? n.toFixed(decimals) : Math.round(n).toLocaleString();
+}
+
+function renderGsc(snap) {
+  const gsc = snap?.gsc;
+  const empty = $("gsc-empty");
+  const metrics = $("gsc-metrics");
+  const tables = $("gsc-tables");
+  const meta = $("gsc-meta-row");
+  if (!hasGscRows(gsc)) {
+    empty.classList.remove("hidden");
+    empty.textContent = "Search Console connected; Google is still collecting data, usually 2–3 days after verification";
+    metrics.classList.add("hidden");
+    tables.classList.add("hidden");
+    meta.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  metrics.classList.remove("hidden");
+  tables.classList.remove("hidden");
+  meta.classList.remove("hidden");
+  const t = gsc.totals || {};
+  $("gsc-impressions").textContent = formatNum(t.impressions);
+  $("gsc-clicks").textContent = formatNum(t.clicks);
+  $("gsc-ctr").textContent = formatPct(t.ctr);
+  $("gsc-position").textContent = formatNum(t.position, 1);
+  const rangeBits = [gsc.start_date, gsc.end_date].filter(Boolean).join(" → ");
+  $("gsc-range").textContent = rangeBits ? `Range: ${rangeBits}` : "";
+  $("gsc-synced").textContent = gsc.ingested_at ? `Last synced: ${formatLocalTime(gsc.ingested_at)}` : "Last synced: —";
+
+  const qbody = $("gsc-queries-tbody");
+  const queries = gsc.queries || [];
+  qbody.innerHTML = queries.length
+    ? queries.map((q) => `
+        <tr>
+          <td>${esc(q.query || "")}</td>
+          <td>${formatNum(q.clicks)}</td>
+          <td>${formatNum(q.impressions)}</td>
+          <td>${formatPct(q.ctr)}</td>
+          <td>${formatNum(q.position, 1)}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="5" class="panel-sub">No query rows in the latest ingest.</td></tr>`;
+
+  const pbody = $("gsc-pages-tbody");
+  const pages = gsc.pages || [];
+  pbody.innerHTML = pages.length
+    ? pages.map((pg) => `
+        <tr>
+          <td class="path-cell" title="${esc(pg.page || "")}">${esc(pg.page || "")}</td>
+          <td>${formatNum(pg.clicks)}</td>
+          <td>${formatNum(pg.impressions)}</td>
+          <td>${formatPct(pg.ctr)}</td>
+          <td>${formatNum(pg.position, 1)}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="5" class="panel-sub">No page rows in the latest ingest.</td></tr>`;
+}
+
 function renderDashboard(snap) {
   state.snapshot = snap;
   const run = snap.active_run;
@@ -494,6 +571,7 @@ function renderDashboard(snap) {
   const approvedDrafts = drafts.filter((d) => d.status === "approved").length;
   $("kpi-drafts-sub").textContent = `${pendingDrafts} pending / ${approvedDrafts} approved (draft-only)`;
 
+  renderGsc(snap);
   renderRewrites(snap.rewrites || []);
   renderIssues(issues);
   renderPagesTable(pages);
@@ -655,7 +733,7 @@ function connectSSE() {
       } else if (ev.stage === "keywords") {
         updateStatusPill({ status: "discovering" });
       }
-      if (ev.stage === "score" || ev.stage === "drafts" || (ev.meta && ev.meta.done)) {
+      if (ev.stage === "score" || ev.stage === "drafts" || ev.stage === "gsc" || (ev.meta && ev.meta.done)) {
         fetchDashboard();
       }
     } catch {}

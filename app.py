@@ -25,6 +25,8 @@ from seo_bot.db import (
     update_draft_status,
     upsert_drafts,
     upsert_keywords,
+    get_latest_gsc,
+    save_gsc_ingest,
 )
 from seo_bot.keywords import build_blog_drafts, discover_keywords
 
@@ -171,6 +173,38 @@ class DraftStatusBody(BaseModel):
     status: str
 
 
+class GscTotals(BaseModel):
+    clicks: float = 0
+    impressions: float = 0
+    ctr: float = 0
+    position: float = 0
+
+
+class GscQueryRow(BaseModel):
+    query: str
+    clicks: float = 0
+    impressions: float = 0
+    ctr: float = 0
+    position: float = 0
+
+
+class GscPageRow(BaseModel):
+    page: str
+    clicks: float = 0
+    impressions: float = 0
+    ctr: float = 0
+    position: float = 0
+
+
+class GscIngestBody(BaseModel):
+    site: str
+    start_date: str
+    end_date: str
+    totals: GscTotals
+    queries: list[GscQueryRow] = []
+    pages: list[GscPageRow] = []
+
+
 @app.get("/")
 async def index():
     return FileResponse(str(STATIC_DIR / "index.html"))
@@ -190,7 +224,8 @@ async def healthz():
 async def api_dashboard():
     snap = get_dashboard_snapshot()
     snap["bot_state"] = dict(bot_state)
-    snap["gsc_connected"] = False
+    snap["gsc_connected"] = True
+    snap["gsc"] = snap.get("gsc") or get_latest_gsc()
     snap["auth_required_for_controls"] = bool(CONTROL_TOKEN)
     snap["events"] = get_recent_events(60)
     return JSONResponse(snap)
@@ -244,6 +279,31 @@ async def api_draft_status(draft_id: int, body: DraftStatusBody):
     )
     return {"ok": True, "draft": updated}
 
+
+
+
+@app.post("/api/gsc/ingest", dependencies=[Depends(require_control_token)])
+async def api_gsc_ingest(body: GscIngestBody):
+    record = save_gsc_ingest(body.model_dump())
+    query_count = len(record.get("queries") or [])
+    page_count = len(record.get("pages") or [])
+    await emit_event(
+        "success",
+        "gsc",
+        f"Search Console snapshot ingested for {record['start_date']} to {record['end_date']} "
+        f"({query_count} queries, {page_count} pages).",
+        {"queries": query_count, "pages": page_count},
+    )
+    return {"ok": True, "gsc": record}
+
+
+@app.get("/api/gsc")
+async def api_gsc():
+    return {
+        "connected": True,
+        "gsc": get_latest_gsc(),
+        "empty_state": "Search Console connected; Google is still collecting data, usually 2-3 days after verification",
+    }
 
 @app.get("/api/events")
 async def api_events(request: Request):

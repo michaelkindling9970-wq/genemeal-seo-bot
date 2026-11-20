@@ -186,18 +186,56 @@
       </article>
     </section>
 
-    <!-- Honest Google Search Console Placeholder -->
-    <section class="gsc-banner glass-card">
-      <div class="gsc-left">
-        <div class="gsc-icon">GSC</div>
+    <!-- Google Search Console (ingest-fed, never fabricated) -->
+    <section class="glass-card section-block gsc-panel">
+      <div class="panel-head">
+        <div class="gsc-left">
+          <div class="gsc-icon">GSC</div>
+          <div>
+            <h2>Google Search Console</h2>
+            <p class="panel-sub">Live organic clicks &amp; impressions from ingested Search Console data only — never fabricated</p>
+          </div>
+        </div>
+        <span id="gsc-status-pill" class="gsc-status-pill gsc-connected">Connected</span>
+      </div>
+      <div id="gsc-metrics" class="gsc-metrics hidden">
+        <article class="gsc-kpi"><div class="kpi-label">Impressions</div><div id="gsc-impressions" class="kpi-val">0</div></article>
+        <article class="gsc-kpi"><div class="kpi-label">Clicks</div><div id="gsc-clicks" class="kpi-val">0</div></article>
+        <article class="gsc-kpi"><div class="kpi-label">CTR</div><div id="gsc-ctr" class="kpi-val">0%</div></article>
+        <article class="gsc-kpi"><div class="kpi-label">Avg Position</div><div id="gsc-position" class="kpi-val">--</div></article>
+      </div>
+      <div id="gsc-meta-row" class="gsc-meta-row hidden">
+        <span id="gsc-range"></span>
+        <span id="gsc-synced"></span>
+      </div>
+      <div id="gsc-empty" class="gsc-empty">
+        Search Console connected; Google is still collecting data, usually 2–3 days after verification
+      </div>
+      <div id="gsc-tables" class="gsc-tables hidden">
         <div>
-          <h3>Connect Google Search Console for Real CTR &amp; Ranking Data</h3>
-          <p>
-            Google Search Console is not connected yet. To keep this dashboard 100% honest, <strong>zero fabricated impressions, clicks, or keyword rankings</strong> are shown. Connect GSC OAuth to unlock live query CTR curves alongside these on-page audits.
-          </p>
+          <h3>Top Queries</h3>
+          <div class="table-scroll">
+            <table class="audit-table">
+              <thead>
+                <tr><th>Query</th><th>Clicks</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr>
+              </thead>
+              <tbody id="gsc-queries-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3>Top Pages</h3>
+          <div class="table-scroll">
+            <table class="audit-table">
+              <thead>
+                <tr><th>Page</th><th>Clicks</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr>
+              </thead>
+              <tbody id="gsc-pages-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
-      <div class="gsc-status-pill">Not Connected · Honest Telemetry Mode</div>
+      <p class="gsc-footnote">Ingest via token-protected <code>POST /api/gsc/ingest</code>. Latest snapshot is kept in SQLite, a JSON cache, and memory — all ephemeral on Render’s free plan (cleared on spin-down, redeploy, or restart).</p>
     </section>
 
     <!-- CTR Title & Meta Rewrite Studio -->
