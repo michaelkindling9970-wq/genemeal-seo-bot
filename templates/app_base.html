@@ -19,7 +19,7 @@
 
   <div class="app-shell tenant-shell">
     <div class="prototype-banner" role="status">
-      Prototype — data may reset. Accounts and audits live in ephemeral SQLite on Render’s free plan and are wiped on spin-down or redeploy. Paid plans ($9–29/mo per site) coming soon. No payment is collected here.
+      Prototype — data may reset. Accounts and audits live in ephemeral SQLite on Render’s free plan and are wiped on spin-down or redeploy. Plans below are for preview only. No payment is collected here.
     </div>
 
     <header class="topbar glass-card">
@@ -35,7 +35,7 @@
             <h1><a href="/app/sites">SEO Audit</a></h1>
             <span class="status-pill status-idle">Prototype</span>
           </div>
-          <p class="brand-sub">Multi-site organic audits · plans coming soon ($9–29/mo per site)</p>
+          <p class="brand-sub">Multi-site organic audits · Free, Starter $12/mo, Pro $24/mo, and one-time audits (payments coming soon)</p>
         </div>
       </div>
       <div class="controls-cluster">
@@ -61,6 +61,10 @@
     {% endif %}
 
     {% block body %}{% endblock %}
+
+    {% block plans %}
+    {% include "_plans.html" %}
+    {% endblock %}
 
     <footer class="footer-note">
       Honest, robots-safe technical audits only. No paid links, no comment spam, no fake traffic. This is a free-plan prototype — storage is temporary.

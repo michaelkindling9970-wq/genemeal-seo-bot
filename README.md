@@ -49,6 +49,11 @@ A free-plan prototype for auditing additional public websites:
 - Sign up / log in: `/app/signup`, `/app/login` (email + password, bcrypt, httpOnly session cookie, CSRF, rate limits)
 - Add up to 3 public http(s) sites, then open `/app/sites/{id}` and run a robots-safe audit (25-page cap)
 - Generic CTR title/meta rewrites for non-GeneMeal sites (GeneMeal's own rewrite behavior is unchanged)
-- Plans coming soon ($9–29/mo per site). No payment is collected in this prototype.
+- Displayed plans (preview only, no payment collected):
+  - Free: 1 site, 1 audit per month, 25 pages per audit
+  - Starter: $12/month, 1 site, weekly or on-demand audits
+  - Pro: $24/month, up to 3 sites
+  - One-time audit: $39–$49
+  This prototype still allows up to 3 sites and 25-page audits; plan limits are not enforced and payment is not enabled.
 
 **Storage is ephemeral:** SQLite lives in `/tmp` on Render's free plan, so accounts and audits can reset on spin-down or redeploy.

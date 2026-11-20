@@ -61,3 +61,50 @@ def test_login_rate_limited(client):
         last = client.post("/app/login", data={"email": "nobody@example.com", "password": "bad-bad-bad", "csrf_token": token})
     assert last.status_code == 429
     assert "too many" in last.text.lower()
+
+
+
+PLAN_MARKERS = (
+    "Free",
+    "$0",
+    "1 audit per month",
+    "Starter",
+    "$12",
+    "weekly or on-demand audits",
+    "Pro",
+    "$24",
+    "up to 3 sites",
+    "One-time audit",
+    "$39–$49",
+)
+GONE = "Plans coming soon ($9–29/mo per site)"
+PAYMENTS = ("stripe", "paypal", "checkout", "/pay", "payment intent")
+
+
+def _assert_plans_displayed(html: str):
+    lowered = html.lower()
+    assert GONE not in html
+    for marker in PLAN_MARKERS:
+        assert marker.lower() in lowered, f"missing plan copy: {marker}"
+    for needle in PAYMENTS:
+        assert needle not in lowered
+    assert html.count("Coming soon") >= 4
+    assert "No payment is collected here" in html
+    assert 'class="prototype-banner"' in html
+
+
+def test_pricing_tiers_are_displayed_without_checkout(client):
+    signup = client.get("/app/signup")
+    assert signup.status_code == 200
+    _assert_plans_displayed(signup.text)
+
+    login = client.get("/app/login")
+    assert login.status_code == 200
+    _assert_plans_displayed(login.text)
+
+    token = _csrf(client, "/app/signup")
+    client.post("/app/signup", data={"email": "plans@example.com", "password": "correct-horse", "csrf_token": token})
+    sites = client.get("/app/sites")
+    assert sites.status_code == 200
+    _assert_plans_displayed(sites.text)
+    assert "3 sites in this prototype" in sites.text or "of 3 sites" in sites.text
