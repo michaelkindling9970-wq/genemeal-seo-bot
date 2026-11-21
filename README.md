@@ -16,8 +16,19 @@ pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
+## Console Login
+The operator dashboard at `/` and its read APIs require a signed-in session. Sign in at `/login` with the username in `CONSOLE_USERNAME` (default `michael`) and the password that matches `CONSOLE_PASSWORD_HASH`. Sessions use a signed httpOnly `SameSite=Lax` cookie (`SESSION_SECRET`). Check **Remember me** (on by default) for a 30-day cookie, or uncheck it for a browser-session cookie that expires on the server after 12 hours. `/healthz`, `/robots.txt`, and `/sitemap.xml` stay public. If `CONSOLE_PASSWORD_HASH` is unset, the console stays locked and the login page shows `login not configured`.
+
+Hash a password without printing the plaintext:
+
+```bash
+python scripts/hash_password.py CONSOLE_PASSWORD
+```
+
+Set the printed hash as `CONSOLE_PASSWORD_HASH` in Render. Never put the plaintext password in the environment.
+
 ## Control Token
-Set `CONTROL_TOKEN` in Render's Environment settings to require `X-Control-Token` (or `Authorization: Bearer ...`) for `/api/run`, `/api/keywords/refresh`, and `/api/drafts/{id}/status`. Read endpoints and the live dashboard remain viewable without the token.
+Set `CONTROL_TOKEN` in Render's Environment settings to require `X-Control-Token` (or `Authorization: Bearer ...`) for `/api/run`, `/api/keywords/refresh`, `/api/drafts/{id}/status`, and `/api/gsc/ingest`. A signed-in console session can use those control buttons without pasting the token. Machine callers, such as the Search Console ingest routine, should keep sending the control token.
 
 ## Google Search Console Ingest
 Token-protected endpoint (requires `X-Control-Token` / `CONTROL_TOKEN`):

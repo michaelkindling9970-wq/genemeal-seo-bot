@@ -585,7 +585,11 @@ function renderDashboard(snap) {
 
 async function fetchDashboard() {
   try {
-    const resp = await fetch("/api/dashboard");
+    const resp = await fetch("/api/dashboard", { credentials: "same-origin" });
+    if (resp.status === 401 || resp.redirected && resp.url.includes("/login")) {
+      window.location.href = "/login";
+      return;
+    }
     const data = await resp.json();
     renderDashboard(data);
   } catch (e) {
@@ -599,6 +603,7 @@ async function callControl(url, bodyObj = null) {
   const resp = await fetch(url, {
     method: "POST",
     headers,
+    credentials: "same-origin",
     body: bodyObj ? JSON.stringify(bodyObj) : undefined,
   });
   if (resp.status === 401) {
