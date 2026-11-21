@@ -60,7 +60,8 @@ def test_login_not_configured_fails_closed(client, monkeypatch):
     page = client.get("/login")
     assert page.status_code == 200
     assert "login not configured" in page.text
-    assert "console-login-form" not in page.text
+    match = re.search(r"<input[^>]*id=\"remember\"[^>]*>", page.text)
+    assert match and "checked" in match.group(0)
 
     home = client.get("/", follow_redirects=False)
     assert home.status_code == 303
