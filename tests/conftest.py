@@ -9,6 +9,12 @@ sys.path.insert(0, str(ROOT))
 os.environ["SEO_SKIP_SCHEDULER"] = "1"
 os.environ["SESSION_SECRET"] = "test-session-secret-not-for-production"
 os.environ["CONTROL_TOKEN"] = "test-control-token"
+os.environ["CONSOLE_USERNAME"] = "michael"
+
+from seo_bot.auth import hash_console_password  # noqa: E402
+
+TEST_CONSOLE_PASSWORD = "test-console-passphrase"
+os.environ["CONSOLE_PASSWORD_HASH"] = hash_console_password(TEST_CONSOLE_PASSWORD, iterations=10_000)
 os.environ["SEO_DB_PATH"] = str(Path(tempfile.gettempdir()) / "seo_bot_pytest.db")
 os.environ["GSC_CACHE_PATH"] = str(Path(tempfile.gettempdir()) / "seo_bot_pytest_gsc.json")
 
@@ -36,6 +42,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SEO_SKIP_SCHEDULER", "1")
     monkeypatch.setenv("SESSION_SECRET", "test-session-secret-not-for-production")
     monkeypatch.setenv("CONTROL_TOKEN", "test-control-token")
+    monkeypatch.setenv("CONSOLE_USERNAME", "michael")
+    monkeypatch.setenv("CONSOLE_PASSWORD_HASH", os.environ["CONSOLE_PASSWORD_HASH"])
     # Re-bind db module paths after env change
     import seo_bot.db as dbmod
     dbmod.DB_PATH = str(db)

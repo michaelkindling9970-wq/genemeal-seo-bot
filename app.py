@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -163,9 +163,16 @@ app = FastAPI(title="GeneMeal SEO Bot", version="1.1.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 from seo_bot.tenant_routes import configure as configure_tenant_routes
+from seo_bot.console_routes import configure_console, console_auth_middleware
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 app.include_router(configure_tenant_routes(str(TEMPLATES_DIR)))
+app.include_router(configure_console(str(TEMPLATES_DIR)))
+
+
+@app.middleware("http")
+async def console_gate(request: Request, call_next):
+    return await console_auth_middleware(request, call_next)
 
 
 @app.middleware("http")
@@ -176,17 +183,17 @@ async def noindex_api_and_docs(request: Request, call_next):
     return response
 
 
-def require_control_token(
-    x_control_token: Optional[str] = Header(default=None),
-    authorization: Optional[str] = Header(default=None),
-) -> None:
-    if not CONTROL_TOKEN:
+def require_control_token(request: Request) -> None:
+    from seo_bot.auth import control_token_expected, control_token_is_valid, current_console_user
+
+    if current_console_user(request):
         return
-    token = (x_control_token or "").strip()
-    if not token and authorization and authorization.lower().startswith("bearer "):
-        token = authorization[7:].strip()
-    if not token or not hmac.compare_digest(token, CONTROL_TOKEN):
-        raise HTTPException(status_code=401, detail="Valid control token required for control actions.")
+    expected = control_token_expected() or CONTROL_TOKEN
+    if not expected:
+        return
+    if control_token_is_valid(request):
+        return
+    raise HTTPException(status_code=401, detail="Valid control token required for control actions.")
 
 
 class DraftStatusBody(BaseModel):
@@ -251,12 +258,16 @@ async def healthz():
 
 
 @app.get("/api/dashboard")
-async def api_dashboard():
+async def api_dashboard(request: Request):
+    from seo_bot.auth import current_console_user
+
     snap = get_dashboard_snapshot()
     snap["bot_state"] = dict(bot_state)
     snap["gsc_connected"] = True
     snap["gsc"] = snap.get("gsc") or get_latest_gsc()
-    snap["auth_required_for_controls"] = bool(CONTROL_TOKEN)
+    session_user = current_console_user(request)
+    snap["session_user"] = session_user
+    snap["auth_required_for_controls"] = bool(CONTROL_TOKEN) and not session_user
     snap["events"] = get_recent_events(60)
     return JSONResponse(snap)
 

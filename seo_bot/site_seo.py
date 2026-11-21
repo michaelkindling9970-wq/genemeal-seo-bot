@@ -7,8 +7,9 @@ from datetime import date
 
 DEFAULT_PUBLIC_ORIGIN = "https://genemeal-seo-bot.onrender.com"
 
-# Traction signup is the only page we want indexed. The operator console, login,
-# site dashboards, and API/docs are noindexed (and API/docs are also disallowed).
+# Traction signup is the only page we want indexed. The operator console, console
+# login, Traction login, site dashboards, and API/docs are noindexed (and the
+# console plus API/docs are disallowed).
 INDEXABLE_PATHS = ("/app/signup",)
 
 
@@ -20,8 +21,9 @@ def robots_txt() -> str:
     origin = public_origin()
     return (
         "User-agent: *\n"
-        "Allow: /\n"
         "Allow: /app/signup\n"
+        "Disallow: /\n"
+        "Disallow: /login\n"
         "Disallow: /api/\n"
         "Disallow: /docs\n"
         "Disallow: /docs/\n"

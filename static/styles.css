@@ -1202,3 +1202,99 @@ html, body {
   .controls-cluster { width: 100%; }
   .controls-cluster .btn { flex: 1; justify-content: center; }
 }
+
+/* Operator console login */
+.console-login-body {
+  min-height: 100vh;
+}
+
+.console-login-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.console-login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.console-login-card .brand-cluster {
+  gap: 14px;
+}
+
+.console-login-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+
+.console-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.console-login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.console-login-form input[type="text"],
+.console-login-form input[type="password"] {
+  background: rgba(5, 8, 20, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  padding: 10px 12px;
+}
+
+.console-login-form input[type="text"]:focus,
+.console-login-form input[type="password"]:focus {
+  outline: 2px solid rgba(16, 185, 129, 0.45);
+  border-color: var(--border-glow);
+}
+
+.remember-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px !important;
+  color: var(--text) !important;
+  font-size: 0.92rem !important;
+  cursor: pointer;
+}
+
+.remember-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--emerald);
+}
+
+.console-login-form .btn {
+  margin-top: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+.login-error {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  color: #fecdd3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}

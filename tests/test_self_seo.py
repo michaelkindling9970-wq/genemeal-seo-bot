@@ -24,6 +24,8 @@ def test_robots_and_sitemap_routes(client):
     body = robots.text
     assert "User-agent: *" in body
     assert "Allow: /app/signup" in body
+    assert "Disallow: /" in body
+    assert "Disallow: /login" in body
     assert "Disallow: /api/" in body
     assert "Disallow: /docs" in body
     assert "Disallow: /openapi.json" in body
@@ -44,6 +46,13 @@ def test_robots_and_sitemap_routes(client):
 
 
 def test_operator_console_has_description_canonical_and_noindex(client):
+    from tests.test_console_auth import _login
+
+    anonymous = client.get("/", follow_redirects=False)
+    assert anonymous.status_code == 303
+    assert "/login" in anonymous.headers["location"]
+
+    assert _login(client).status_code == 303
     res = client.get("/")
     assert res.status_code == 200
     html = res.text
@@ -97,6 +106,15 @@ def test_login_sites_and_dashboard_are_noindexed(client):
 
 
 def test_api_and_docs_send_x_robots_tag(client):
+    from tests.test_console_auth import _login
+
+    for path in ("/api/gsc", "/api/dashboard", "/docs", "/redoc", "/openapi.json"):
+        res = client.get(path, follow_redirects=False)
+        assert res.status_code in (401, 303), path
+        if res.status_code == 401:
+            assert res.headers.get("x-robots-tag") == "noindex, nofollow", path
+
+    assert _login(client).status_code == 303
     for path in ("/api/gsc", "/api/dashboard", "/docs", "/redoc", "/openapi.json"):
         res = client.get(path)
         assert res.status_code == 200, path
